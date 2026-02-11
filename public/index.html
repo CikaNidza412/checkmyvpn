@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="sr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>checkmyvpn.xyz — Uncle Nick’s mreža</title>
+  <style>
+    :root { color-scheme: dark; }
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1000px 600px at 20% 10%, #1a2a3a 0, transparent 60%),
+                  radial-gradient(900px 500px at 80% 30%, #2a1a3a 0, transparent 55%),
+                  #0b0f14;
+      color:#eaf0f7;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .card{
+      width:min(820px, 100%);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+    }
+    .brand{ display:flex; gap:12px; align-items:center; margin-bottom: 18px; }
+    .logo{
+      width:42px; height:42px; border-radius: 12px;
+      background: linear-gradient(135deg, #7c3aed, #06b6d4);
+      display:grid; place-items:center;
+      font-weight: 800;
+    }
+    h1{ font-size: 20px; margin:0; }
+    .sub{ opacity: .85; margin-top: 4px; font-size: 13px; }
+    .grid{ display:grid; grid-template-columns: 1fr; gap:12px; margin-top: 14px; }
+    @media (min-width: 720px){ .grid{ grid-template-columns: 1fr 1fr; } }
+    .box{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      padding: 14px 14px 12px;
+    }
+    .label{ font-size:12px; opacity:.75; margin-bottom: 6px; }
+    .value{ font-size:16px; font-weight: 650; word-break: break-word; }
+    .small{ font-size: 12px; opacity:.75; margin-top: 10px; line-height: 1.4; }
+    button{
+      margin-top: 14px;
+      border:0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 650;
+      background: linear-gradient(135deg, #7c3aed, #06b6d4);
+      color: white;
+      cursor:pointer;
+    }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="logo">UN</div>
+      <div>
+        <h1>checkmyvpn.xyz</h1>
+        <div class="sub">Brendirano kao <b>Uncle Nick’s mreža</b> — proveri svoj IP i lokaciju</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="box">
+        <div class="label">IP adresa</div>
+        <div class="value" id="ip">Učitavam…</div>
+      </div>
+
+      <div class="box">
+        <div class="label">Lokacija (približno)</div>
+        <div class="value" id="loc">Učitavam…</div>
+      </div>
+
+      <div class="box">
+        <div class="label">ASN / ISP</div>
+        <div class="value" id="asn">Učitavam…</div>
+      </div>
+
+      <div class="box">
+        <div class="label">VPN/Proxy “hint”</div>
+        <div class="value" id="vpn">Učitavam…</div>
+      </div>
+    </div>
+
+    <button id="refresh">Osveži</button>
+
+    <div class="small">
+      Napomena: Lokacija je procena (grad/region) i zavisi od mreže. Ne čuvamo podatke.
+    </div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  async function load() {
+    $("refresh").disabled = true;
+    $("ip").textContent = "Učitavam…";
+    $("loc").textContent = "Učitavam…";
+    $("asn").textContent = "Učitavam…";
+    $("vpn").textContent = "Učitavam…";
+
+    try {
+      const res = await fetch("/api/ip", { headers: { "Accept": "application/json" }});
+      if (!res.ok) throw new Error("API error: " + res.status);
+      const data = await res.json();
+
+      $("ip").textContent = data.ip || "N/A";
+      $("loc").textContent = data.location || "N/A";
+      $("asn").textContent = data.asn || "N/A";
+      $("vpn").textContent = data.vpnHint || "N/A";
+    } catch (e) {
+      $("ip").textContent = "Greška";
+      $("loc").textContent = "—";
+      $("asn").textContent = "—";
+      $("vpn").textContent = "—";
+      console.error(e);
+    } finally {
+      $("refresh").disabled = false;
+    }
+  }
+
+  $("refresh").addEventListener("click", load);
+  load();
+</script>
+</body>
+</html>
