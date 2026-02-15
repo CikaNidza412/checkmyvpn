@@ -1,135 +1,280 @@
 <!doctype html>
-<html lang="sr">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>checkmyvpn.xyz — Uncle Nick’s mreža</title>
+  <title>checkmyvpn.xyz — Uncle Nick’s Network</title>
+  <meta name="description" content="Check your public IP address and VPN/Proxy/Datacenter signals. Uncle Nick’s Network." />
+
+  <!-- Google Analytics (GA4) - replace G-XXXXXXXXXX with your Measurement ID -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-1PC3L2LGFS"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-1PC3L2LGFS', { anonymize_ip: true });
+  </script>
+
   <style>
-    :root { color-scheme: dark; }
+    :root{
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --shadow: 0 18px 45px rgba(0,0,0,0.08);
+      --text: #1f2937;
+      --muted: #6b7280;
+
+      --drop-bg: #cfe6ff;
+      --drop-border: #7cb4ff;
+      --btn: #cbd5e1;
+      --btn-text: #ffffff;
+    }
+    *{ box-sizing: border-box; }
     body{
-      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(1000px 600px at 20% 10%, #1a2a3a 0, transparent 60%),
-                  radial-gradient(900px 500px at 80% 30%, #2a1a3a 0, transparent 55%),
-                  #0b0f14;
-      color:#eaf0f7;
-      min-height:100vh;
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:24px;
+      padding: 28px 18px;
     }
+    .wrap{ width:min(760px,100%); display:flex; flex-direction:column; align-items:center; gap:12px; }
     .card{
-      width:min(820px, 100%);
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 18px;
-      padding: 22px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.35);
-      backdrop-filter: blur(10px);
+      width:min(640px,100%);
+      background:var(--card);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      padding:26px 26px 18px;
     }
-    .brand{ display:flex; gap:12px; align-items:center; margin-bottom: 18px; }
+    .top{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; margin-bottom:14px; }
     .logo{
-      width:42px; height:42px; border-radius: 12px;
-      background: linear-gradient(135deg, #7c3aed, #06b6d4);
-      display:grid; place-items:center;
-      font-weight: 800;
+      width:74px; height:74px; border-radius:999px; background:#eef2ff;
+      display:grid; place-items:center; overflow:hidden;
+      border:3px solid rgba(59,130,246,0.18);
     }
-    h1{ font-size: 20px; margin:0; }
-    .sub{ opacity: .85; margin-top: 4px; font-size: 13px; }
-    .grid{ display:grid; grid-template-columns: 1fr; gap:12px; margin-top: 14px; }
-    @media (min-width: 720px){ .grid{ grid-template-columns: 1fr 1fr; } }
-    .box{
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.05);
-      padding: 14px 14px 12px;
+    .logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+    h1{ margin:0; font-size:22px; font-weight:500; letter-spacing:.2px; }
+
+    .dropzone{
+      margin-top:10px;
+      background:var(--drop-bg);
+      border:2px dashed var(--drop-border);
+      border-radius:14px;
+      padding:26px 18px;
+      text-align:center;
     }
-    .label{ font-size:12px; opacity:.75; margin-bottom: 6px; }
-    .value{ font-size:16px; font-weight: 650; word-break: break-word; }
-    .small{ font-size: 12px; opacity:.75; margin-top: 10px; line-height: 1.4; }
-    button{
-      margin-top: 14px;
+    .folder{ font-size:34px; line-height:1; margin-bottom:10px; }
+    .drop-title{ margin:0; font-size:16px; color:rgba(37,99,235,0.75); font-weight:600; }
+
+    .grid{ margin-top:18px; display:grid; grid-template-columns:1fr; gap:10px; text-align:left; }
+    @media (min-width: 680px){ .grid{ grid-template-columns: 1fr 1fr; } }
+    .item{ border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; background:#fff; }
+    .label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .value{ font-size:14px; font-weight:600; word-break:break-word; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; font-weight:650; }
+
+    .pillrow{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+    .pill{
+      border-radius:999px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+      padding:6px 10px;
+      font-size:12px;
+      font-weight:700;
+    }
+    .pill.bad{ border-color:#fecaca; background:#fff1f2; }
+    .pill.good{ border-color:#bbf7d0; background:#f0fdf4; }
+
+    .actions{ margin-top:14px; }
+    .btn{
+      width:100%;
       border:0;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-weight: 650;
-      background: linear-gradient(135deg, #7c3aed, #06b6d4);
-      color: white;
+      border-radius:12px;
+      padding:14px 16px;
+      background:var(--btn);
+      color:var(--btn-text);
+      font-size:15px;
+      font-weight:700;
       cursor:pointer;
     }
-    button:disabled{ opacity:.6; cursor:not-allowed; }
+    .mini-actions{ display:flex; gap:10px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
+    .linkbtn{
+      border:1px solid #e5e7eb;
+      background:#fff;
+      border-radius:999px;
+      padding:8px 12px;
+      font-weight:600;
+      cursor:pointer;
+      color:#111827;
+    }
+    .status{ margin-top:10px; font-size:12px; color:var(--muted); text-align:center; }
+
+    footer{
+      width:min(640px,100%);
+      text-align:center;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+      padding:6px 10px 0;
+    }
+    .footer-strong{ color:#374151; font-weight:600; }
   </style>
 </head>
+
 <body>
-  <div class="card">
-    <div class="brand">
-      <div class="logo">UN</div>
-      <div>
-        <h1>checkmyvpn.xyz</h1>
-        <div class="sub">Brendirano kao <b>Uncle Nick’s mreža</b> — proveri svoj IP i lokaciju</div>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div class="logo">
+          <img src="/assets/logo-checkmyvpn.png" alt="Uncle Nick logo"
+               onerror="this.style.display='none'; this.parentElement.textContent='UN'; this.parentElement.style.fontWeight='900'; this.parentElement.style.color='#2563eb';">
+        </div>
+        <h1>Uncle Nick’s Network — Check My VPN</h1>
+      </div>
+
+      <div class="dropzone" aria-label="IP info panel">
+        <div class="folder">📁</div>
+        <p class="drop-title">Your IP, location, and VPN/Proxy signals</p>
+
+        <div class="grid">
+          <div class="item">
+            <div class="label">IP Address</div>
+            <div class="value mono" id="ip">Loading…</div>
+          </div>
+
+          <div class="item">
+            <div class="label">Location (best effort)</div>
+            <div class="value" id="loc">Loading…</div>
+          </div>
+
+          <div class="item">
+            <div class="label">ASN / ISP</div>
+            <div class="value" id="asn">Loading…</div>
+          </div>
+
+          <div class="item">
+            <div class="label">VPN Verdict</div>
+            <div class="value" id="verdict">Loading…</div>
+            <div class="pillrow" id="pills"></div>
+          </div>
+
+          <div class="item">
+            <div class="label">Country mismatch (Cloudflare vs IP DB)</div>
+            <div class="value" id="mismatch">Loading…</div>
+          </div>
+
+          <div class="item">
+            <div class="label">Data source</div>
+            <div class="value" id="source">Loading…</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="refresh">Refresh</button>
+          <div class="mini-actions">
+            <button class="linkbtn" id="copy">Copy IP</button>
+            <button class="linkbtn" id="copyjson">Copy JSON</button>
+          </div>
+          <div class="status" id="status">No logs. Analytics are aggregated only.</div>
+        </div>
       </div>
     </div>
 
-    <div class="grid">
-      <div class="box">
-        <div class="label">IP adresa</div>
-        <div class="value" id="ip">Učitavam…</div>
-      </div>
-
-      <div class="box">
-        <div class="label">Lokacija (približno)</div>
-        <div class="value" id="loc">Učitavam…</div>
-      </div>
-
-      <div class="box">
-        <div class="label">ASN / ISP</div>
-        <div class="value" id="asn">Učitavam…</div>
-      </div>
-
-      <div class="box">
-        <div class="label">VPN/Proxy “hint”</div>
-        <div class="value" id="vpn">Učitavam…</div>
-      </div>
-    </div>
-
-    <button id="refresh">Osveži</button>
-
-    <div class="small">
-      Napomena: Lokacija je procena (grad/region) i zavisi od mreže. Ne čuvamo podatke.
-    </div>
+    <footer>
+      <div class="footer-strong">© 2026 Uncle Nick’s Network</div>
+      Privacy: No logs, no tracking (server-side). Analytics: aggregated metrics only.
+    </footer>
   </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
 
+  function pill(text, kind) {
+    const el = document.createElement("span");
+    el.className = `pill ${kind || ""}`.trim();
+    el.textContent = text;
+    return el;
+  }
+
   async function load() {
     $("refresh").disabled = true;
-    $("ip").textContent = "Učitavam…";
-    $("loc").textContent = "Učitavam…";
-    $("asn").textContent = "Učitavam…";
-    $("vpn").textContent = "Učitavam…";
+    $("status").textContent = "Fetching…";
+    ["ip","loc","asn","verdict","mismatch","source"].forEach(k => $(k).textContent = "Loading…");
+    $("pills").innerHTML = "";
 
     try {
       const res = await fetch("/api/ip", { headers: { "Accept": "application/json" }});
       if (!res.ok) throw new Error("API error: " + res.status);
       const data = await res.json();
+      window.__lastJson = data;
 
       $("ip").textContent = data.ip || "N/A";
       $("loc").textContent = data.location || "N/A";
       $("asn").textContent = data.asn || "N/A";
-      $("vpn").textContent = data.vpnHint || "N/A";
+      $("source").textContent = data.source || "N/A";
+
+      const vpnLikely = !!data?.verdict?.vpnLikely;
+      $("verdict").textContent = vpnLikely ? "Likely VPN / Proxy / Datacenter" : "No strong signal";
+
+      const pills = $("pills");
+      const flags = data.flags || {};
+      const reasons = data?.verdict?.reasons || [];
+      if (vpnLikely) pills.appendChild(pill("VPN check: FLAGGED", "bad"));
+      else pills.appendChild(pill("VPN check: OK", "good"));
+
+      if (flags.is_vpn) pills.appendChild(pill("is_vpn", "bad"));
+      if (flags.is_proxy) pills.appendChild(pill("is_proxy", "bad"));
+      if (flags.is_tor) pills.appendChild(pill("is_tor", "bad"));
+      if (flags.is_datacenter) pills.appendChild(pill("is_datacenter", "bad"));
+      if (flags.is_abuser) pills.appendChild(pill("is_abuser", "bad"));
+
+      if (!flags.is_vpn && !flags.is_proxy && !flags.is_tor && !flags.is_datacenter && !flags.is_abuser) {
+        pills.appendChild(pill("no flags", "good"));
+      }
+
+      $("mismatch").textContent = data.countryMismatch
+        ? `${data.countryMismatch.cloudflareCountry} vs ${data.countryMismatch.ipapiCountry}`
+        : "No mismatch detected";
+
+      $("status").textContent = `Updated. Reasons: ${reasons.join(", ")}`;
+
     } catch (e) {
-      $("ip").textContent = "Greška";
-      $("loc").textContent = "—";
-      $("asn").textContent = "—";
-      $("vpn").textContent = "—";
       console.error(e);
+      $("status").textContent = "Failed to load. Try again.";
+      window.__lastJson = null;
     } finally {
       $("refresh").disabled = false;
     }
   }
 
   $("refresh").addEventListener("click", load);
+
+  $("copy").addEventListener("click", async () => {
+    const ip = $("ip").textContent.trim();
+    if (!ip || ip === "Loading…" || ip === "N/A") return;
+    try {
+      await navigator.clipboard.writeText(ip);
+      $("status").textContent = "IP copied ✅";
+      setTimeout(() => $("status").textContent = "Updated.", 1200);
+    } catch {
+      alert("Copy failed. Select and copy manually.");
+    }
+  });
+
+  $("copyjson").addEventListener("click", async () => {
+    if (!window.__lastJson) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(window.__lastJson, null, 2));
+      $("status").textContent = "JSON copied ✅";
+      setTimeout(() => $("status").textContent = "Updated.", 1200);
+    } catch {
+      alert("Copy failed.");
+    }
+  });
+
   load();
 </script>
 </body>
