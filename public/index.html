@@ -6,15 +6,11 @@
   <title>Check my VPN - Uncle Nick’s Network</title>
   <meta name="description" content="Check your public IP address and VPN/Proxy/Datacenter signals. Uncle Nick’s Network." />
 
-<!-- Favicon -->
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
 
-
-
-
-  
-  <!-- Google Analytics (GA4) - replace G-XXXXXXXXXX with your Measurement ID -->
+  <!-- Google Analytics (GA4) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-1PC3L2LGFS"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -129,10 +125,75 @@
       padding:6px 10px 0;
     }
     .footer-strong{ color:#374151; font-weight:600; }
+
+    /* --- Auto refresh + IP changed UI --- */
+    .ipChangeToast{
+      position: fixed;
+      left: 50%;
+      top: 18px;
+      transform: translateX(-50%) translateY(-12px);
+      background: #111827;
+      color: #fff;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 750;
+      box-shadow: 0 18px 45px rgba(0,0,0,.22);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 9999;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .ipChangeToast.show{
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .ipChangeToast .dot{
+      width: 10px; height: 10px; border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34,197,94,.55);
+      animation: ping 1.2s ease-out 1;
+    }
+    @keyframes ping{
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,.55); }
+      100% { box-shadow: 0 0 0 14px rgba(34,197,94,0); }
+    }
+    .card.pulse{ animation: cardPulse .55s ease; }
+    @keyframes cardPulse{
+      0% { box-shadow: var(--shadow); }
+      50% { box-shadow: 0 24px 70px rgba(96,165,250,.28); }
+      100% { box-shadow: var(--shadow); }
+    }
+    .livePill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background:#fff;
+      color:#111827;
+      font-size:12px;
+      font-weight:750;
+    }
+    .livePill .miniDot{
+      width:8px; height:8px; border-radius:999px;
+      background:#9ca3af;
+    }
+    .livePill.on .miniDot{ background:#22c55e; }
+    .livePill .muted{ font-weight:650; color:#6b7280; }
   </style>
 </head>
 
 <body>
+  <div class="ipChangeToast" id="ipToast" aria-live="polite">
+    <span class="dot"></span>
+    <span id="ipToastText">IP changed</span>
+  </div>
+
   <div class="wrap">
     <div class="card">
       <div class="top">
@@ -141,6 +202,9 @@
                onerror="this.style.display='none'; this.parentElement.textContent='UN'; this.parentElement.style.fontWeight='900'; this.parentElement.style.color='#2563eb';">
         </div>
         <h1>Uncle Nick’s Network — Check My VPN</h1>
+        <div class="livePill" id="livePill" title="Auto-refresh checks your IP periodically.">
+          <span class="miniDot"></span><span>Live</span><span class="muted" id="liveMeta">—</span>
+        </div>
       </div>
 
       <div class="dropzone" aria-label="IP info panel">
@@ -200,6 +264,11 @@
 <script>
   const $ = (id) => document.getElementById(id);
 
+  const AUTO_REFRESH_MS = 6000; // 6000–15000 is a good range
+  let autoTimer = null;
+  let inFlight = false;
+  let lastFingerprint = null;
+
   function pill(text, kind) {
     const el = document.createElement("span");
     el.className = `pill ${kind || ""}`.trim();
@@ -207,15 +276,59 @@
     return el;
   }
 
-  async function load() {
-    $("refresh").disabled = true;
-    $("status").textContent = "Fetching…";
-    ["ip","loc","asn","verdict","mismatch","source"].forEach(k => $(k).textContent = "Loading…");
-    $("pills").innerHTML = "";
+  function makeFingerprint(data){
+    const ip = data?.ip || "";
+    const loc = data?.location || "";
+    const asn = data?.asn || "";
+    return [ip, loc, asn].join("|");
+  }
+
+  function showToast(text){
+    const toast = $("ipToast");
+    const toastText = $("ipToastText");
+    if (!toast || !toastText) return;
+
+    toastText.textContent = text;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2400);
+  }
+
+  function pulseCard(){
+    const card = document.querySelector(".card");
+    if (!card) return;
+    card.classList.remove("pulse");
+    void card.offsetWidth; // restart animation
+    card.classList.add("pulse");
+  }
+
+  function setLive(on, meta){
+    const pillEl = $("livePill");
+    const metaEl = $("liveMeta");
+    if (!pillEl || !metaEl) return;
+    pillEl.classList.toggle("on", !!on);
+    metaEl.textContent = meta || "—";
+  }
+
+  async function load({ silent = false } = {}) {
+    if (inFlight) return;
+    inFlight = true;
+
+    if (!silent){
+      $("refresh").disabled = true;
+      $("status").textContent = "Fetching…";
+      ["ip","loc","asn","verdict","mismatch","source"].forEach(k => $(k).textContent = "Loading…");
+      $("pills").innerHTML = "";
+    } else {
+      setLive(true, "checking…");
+    }
 
     try {
-      const res = await fetch("/api/ip", { headers: { "Accept": "application/json" }});
+      const res = await fetch(`/api/ip?ts=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
       if (!res.ok) throw new Error("API error: " + res.status);
+
       const data = await res.json();
       window.__lastJson = data;
 
@@ -227,20 +340,22 @@
       const vpnLikely = !!data?.verdict?.vpnLikely;
       $("verdict").textContent = vpnLikely ? "Likely VPN / Proxy / Datacenter" : "No strong signal";
 
-      const pills = $("pills");
+      const pillsEl = $("pills");
+      pillsEl.innerHTML = "";
       const flags = data.flags || {};
       const reasons = data?.verdict?.reasons || [];
-      if (vpnLikely) pills.appendChild(pill("VPN check: FLAGGED", "bad"));
-      else pills.appendChild(pill("VPN check: OK", "good"));
 
-      if (flags.is_vpn) pills.appendChild(pill("is_vpn", "bad"));
-      if (flags.is_proxy) pills.appendChild(pill("is_proxy", "bad"));
-      if (flags.is_tor) pills.appendChild(pill("is_tor", "bad"));
-      if (flags.is_datacenter) pills.appendChild(pill("is_datacenter", "bad"));
-      if (flags.is_abuser) pills.appendChild(pill("is_abuser", "bad"));
+      if (vpnLikely) pillsEl.appendChild(pill("VPN check: FLAGGED", "bad"));
+      else pillsEl.appendChild(pill("VPN check: OK", "good"));
+
+      if (flags.is_vpn) pillsEl.appendChild(pill("is_vpn", "bad"));
+      if (flags.is_proxy) pillsEl.appendChild(pill("is_proxy", "bad"));
+      if (flags.is_tor) pillsEl.appendChild(pill("is_tor", "bad"));
+      if (flags.is_datacenter) pillsEl.appendChild(pill("is_datacenter", "bad"));
+      if (flags.is_abuser) pillsEl.appendChild(pill("is_abuser", "bad"));
 
       if (!flags.is_vpn && !flags.is_proxy && !flags.is_tor && !flags.is_datacenter && !flags.is_abuser) {
-        pills.appendChild(pill("no flags", "good"));
+        pillsEl.appendChild(pill("no flags", "good"));
       }
 
       $("mismatch").textContent = data.countryMismatch
@@ -249,16 +364,37 @@
 
       $("status").textContent = `Updated. Reasons: ${reasons.join(", ")}`;
 
+      const fp = makeFingerprint(data);
+      if (lastFingerprint === null){
+        lastFingerprint = fp;
+      } else if (fp !== lastFingerprint){
+        lastFingerprint = fp;
+        const newIp = data.ip || "unknown";
+        const newLoc = data.location || "unknown location";
+        showToast(`IP changed: ${newIp} • ${newLoc}`);
+        pulseCard();
+      }
+
+      setLive(true, `every ${Math.round(AUTO_REFRESH_MS/1000)}s`);
+
     } catch (e) {
       console.error(e);
       $("status").textContent = "Failed to load. Try again.";
       window.__lastJson = null;
+      setLive(false, "offline");
     } finally {
       $("refresh").disabled = false;
+      inFlight = false;
     }
   }
 
-  $("refresh").addEventListener("click", load);
+  function startAuto(){
+    if (autoTimer) clearInterval(autoTimer);
+    load({ silent: true });
+    autoTimer = setInterval(() => load({ silent: true }), AUTO_REFRESH_MS);
+  }
+
+  $("refresh").addEventListener("click", () => load({ silent: false }));
 
   $("copy").addEventListener("click", async () => {
     const ip = $("ip").textContent.trim();
@@ -283,11 +419,12 @@
     }
   });
 
-  load();
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) load({ silent: true });
+  });
+
+  load({ silent: false });
+  startAuto();
 </script>
 </body>
 </html>
-
-
-
-
