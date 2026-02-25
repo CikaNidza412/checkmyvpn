@@ -114,7 +114,7 @@ export async function onRequest(context) {
       ...baseline,
       verdict: {
         vpnLikely: false,
-        reason: "IP unknown",
+        reasons: ["IP unknown"],
       },
     });
   }
@@ -134,13 +134,17 @@ export async function onRequest(context) {
     });
 
     if (!res.ok) {
+      const reasons = [];
+      if (baseline.security.isAnonymousProxy) reasons.push("cloudflare: isAnonymousProxy");
+      if (!reasons.length) reasons.push("ipapi unavailable");
+
       return json({
         ok: true,
         ...baseline,
         ipapi: { ok: false, status: res.status },
         verdict: {
           vpnLikely: baseline.security.isAnonymousProxy,
-          reason: "ipapi unavailable",
+          reasons,
         },
       });
     }
@@ -188,6 +192,20 @@ export async function onRequest(context) {
       flags.is_datacenter ||
       baseline.security.isAnonymousProxy;
 
+    const reasons = [];
+    if (flags.is_vpn) reasons.push("ipapi: is_vpn");
+    if (flags.is_proxy) reasons.push("ipapi: is_proxy");
+    if (flags.is_tor) reasons.push("ipapi: is_tor");
+    if (flags.is_datacenter) reasons.push("ipapi: is_datacenter");
+    if (flags.is_abuser) reasons.push("ipapi: is_abuser");
+    if (baseline.security.isAnonymousProxy) reasons.push("cloudflare: isAnonymousProxy");
+    if (!reasons.length) reasons.push("no strong signal");
+
+    const mismatch =
+      (baseline.country && country && baseline.country !== country)
+        ? { cloudflareCountry: baseline.country, ipapiCountry: country }
+        : null;
+
     return json({
       ok: true,
       ip,
@@ -200,6 +218,7 @@ export async function onRequest(context) {
       asn: asnStr,
       asnType: asnType || null,
       flags,
+      countryMismatch: mismatch,
       cloudflare: {
         location: baseline.location,
         country: baseline.country,
@@ -209,17 +228,22 @@ export async function onRequest(context) {
       },
       verdict: {
         vpnLikely,
+        reasons,
       },
     });
 
   } catch (e) {
+    const reasons = [];
+    if (baseline.security.isAnonymousProxy) reasons.push("cloudflare: isAnonymousProxy");
+    if (!reasons.length) reasons.push("ipapi fetch failed");
+
     return json({
       ok: true,
       ...baseline,
       ipapi: { ok: false, error: "fetch_failed" },
       verdict: {
         vpnLikely: baseline.security.isAnonymousProxy,
-        reason: "ipapi fetch failed",
+        reasons,
       },
     });
   }
